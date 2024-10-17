@@ -1,26 +1,7 @@
-const Questionnaire = require('../models/Questionnaire');
-const { generateLabDesign } = require('../services/aiService');
+// const Questionnaire = require('../models/Questionnaire');
+// const { generateLabDesign } = require('../services/aiService');
 
 
-exports.submitAnswers = async (req, res) => {
-    const { questions, optionSelected } = req.body;
-  
-    const userInput = {
-      labType: questions.labType,
-      role: questions.role,
-      purpose: questions.purpose,
-      designPreferences: questions.designPreferences,
-      outputType: optionSelected  // This could be 'image', 'video', or 'presentation'
-    };
-  
-    try {
-      const aiDesign = await generateLabDesign(userInput);
-      res.json({ msg: 'Questionnaire saved successfully', aiDesign });
-    } catch (error) {
-      console.error('Error in submitAnswers:', error.message);
-      res.status(500).send('Server error');
-    }
-};
 // exports.submitAnswers = async (req, res) => {
 //     const { questions, optionSelected } = req.body;
   
@@ -29,13 +10,49 @@ exports.submitAnswers = async (req, res) => {
 //       role: questions.role,
 //       purpose: questions.purpose,
 //       designPreferences: questions.designPreferences,
-//       outputType: optionSelected
+//       outputType: optionSelected  // This could be 'image', 'video', or 'presentation'
 //     };
   
 //     try {
 //       const aiDesign = await generateLabDesign(userInput);
 //       res.json({ msg: 'Questionnaire saved successfully', aiDesign });
 //     } catch (error) {
+//       console.error('Error in submitAnswers:', error.message);
 //       res.status(500).send('Server error');
 //     }
-//   };
+// };
+// // exports.submitAnswers = async (req, res) => {
+// //     const { questions, optionSelected } = req.body;
+  
+// //     const userInput = {
+// //       labType: questions.labType,
+// //       role: questions.role,
+// //       purpose: questions.purpose,
+// //       designPreferences: questions.designPreferences,
+// //       outputType: optionSelected
+// //     };
+  
+// //     try {
+// //       const aiDesign = await generateLabDesign(userInput);
+// //       res.json({ msg: 'Questionnaire saved successfully', aiDesign });
+// //     } catch (error) {
+// //       res.status(500).send('Server error');
+// //     }
+// //   };
+const { generateLabDesign } = require('../services/aiService');
+
+exports.submitAnswers = async (req, res) => {
+  const { optionSelected } = req.body; // User only selects outputType
+
+  const userInput = {
+    outputType: optionSelected  // 'image', 'video', or 'presentation'
+  };
+
+  try {
+    const aiDesign = await generateLabDesign(userInput);
+    res.json({ msg: 'Content generated successfully', aiDesign });
+  } catch (error) {
+    console.error('Error in submitAnswers:', error.message);
+    res.status(500).send({status: "Internal Server Error",message:error.message});
+  }
+};
