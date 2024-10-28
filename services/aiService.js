@@ -381,7 +381,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-const { text2im, presentationModel } = require('./dalle'); // Assuming DALL·E or another tool is available for image generation
+const { text2im, presentationModel, posterGenerator } = require('./dalle'); // Assuming DALL·E or another tool is available for image generation
 const OpenAIApi = require('openai');
 const Configuration = require('openai');
 
@@ -433,6 +433,8 @@ exports.generateLabDesign = async (userInput) => {
     Include relevant visuals related with ISO/TC 336 lab design standards.
   `;
 
+  const posterPrompt = `${ISO336_PROMPT}. Make an image promoting international lab standard vocabulary for labs.`;
+
   try {
     let result;
 
@@ -463,6 +465,8 @@ exports.generateLabDesign = async (userInput) => {
     } else if (outputType === 'presentation') {
       // Generate content for a presentation
       const presentationText = await generatePresentationText(prompt);
+      console.log("Presentation Text:", presentationText);
+      
       const slides = extractSlides(presentationText);
       console.log("Slides:", slides);
       
@@ -480,6 +484,20 @@ exports.generateLabDesign = async (userInput) => {
 
       if (videoResponse.data.videoUrl) {
         result = { videoUrl: videoResponse.data.videoUrl };
+      }
+    }else if (outputType === 'poster') {
+      console.log("poster prompt is:", posterPrompt);
+      
+      // const posterResponse = await axios.post('http://localhost:5003/generate_poster', { prompt });
+      // console.log("poster res is:", posterResponse.data);
+      const posterResponse = await posterGenerator(posterPrompt);
+      console.log("poster res is:", posterResponse);
+
+      if (posterResponse) {
+        console.log("poster res is:", posterResponse);
+        result = { posterUrl: posterResponse };
+      }else{
+        return { error: 'Failed to generate poster' };
       }
     }else {
       throw new Error('Invalid output type');
@@ -500,11 +518,11 @@ const generatePresentationText = async (prompt) => {
       messages: [
         {
           role: "system",
-          content: "You are an expert in ISO/TC 336 Lab standards and presentation making.",
+          content: "You are an expert in International Lab standards and presentation making.",
         },
         {
           role: "user",
-          content: prompt,
+          content: `${prompt}. Write a presentation about ISO/TC 336 Lab standards using the data provided. Include sections like "Introduction", "Lab Design Standards", "Lab Safety Standards", "Lab Energy Efficiency Standards", "Lab Digitalization Standards", "Lab Mobile Standards", "Conclusion", and "References".`,
         },
       ],
       // messages: [{ role: "user", content: `${prompt} and also remember to add a description for it as well in a Description: tag always!` }]
@@ -531,13 +549,13 @@ const generatePresentationImages = async (slides) => {
       slide.startsWith('Slide 4') || 
       slide.startsWith('Slide 5')
     ).slice(0, 5);
-
+console.log("slides for images:", slidesForImages);
     // Generate images only for the filtered slides
     const imageResponses = await Promise.all(
       slidesForImages.map(async (slide) => {
         try {
           const imageResponse = await presentationModel({
-            prompt: `Create an illustration for the following slide, show these items as  must: "the whole lab", "items mentioned in the slide" : ${slide}.`,
+            prompt: `Create an illustration for the following text, show items mentioned in the text : ${slide}.`,
             size: '1024x1024',
           });
           images.push(imageResponse); // Collect image responses
@@ -566,7 +584,7 @@ const extractSlides = (presentationText) => {
   
   // Split the text where "Slide X:" occurs to separate slides
   const slideTitles = presentationText.match(slideRegex);
-
+  console.log("slideTitles", slideTitles); 
   if (!slideTitles) {
     console.error("No slides found in the text");
     return [];
@@ -574,9 +592,11 @@ const extractSlides = (presentationText) => {
 
   // Split the presentation text by slide titles to extract content for each slide
   const slideContents = presentationText.split(slideRegex).filter(content => content.trim() !== '');
+  console.log("slideContents", slideContents);  // Debugging to check extracted content
 
   // Recombine titles with their respective content
   const slides = [];
+ // Debugging to check extracted titles
   for (let i = 0; i < slideTitles.length; i++) {
     slides.push(slideTitles[i] + slideContents[i + 1]?.trim());
   }
